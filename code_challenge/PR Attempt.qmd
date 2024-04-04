@@ -1,0 +1,76 @@
+---
+title: "Quarto Doc"
+format: html
+editor: source
+---
+ 
+ 
+```{r}
+Labels <- read_csv("input_data/bps_model_number_name.csv")
+Raw <- read_csv("input_data/combine_raw.csv")
+sclsAttr <- read_csv("input_data/scls_aoi_attributes.csv")
+bpsAttr <- read_csv("input_data/bps_aoi_attributes.csv")
+ref <- read_csv("input_data/ref_con_modified.csv")
+```
+
+Need create a list of the BpS corressponding to their model number in order to replace vairables
+
+```{r}
+
+LabList <- setNames(Labels$Model_Code, Labels$BpS_Name)
+
+print(LabList[["North Pacific Oak Woodland"]])
+
+```
+
+
+Now I am going to use this list to add the names of the environemtns to add the labels to the dataset I believe we need to use
+
+```{r}
+ref2 <- ref
+
+ref2$BpS_Name <- sapply(ref2$Model_Code, function(Model_Code) LabList[[Model_Code]])
+
+
+```
+
+
+Struggling with the stuff above so I am going to pivot to brute force merging and seeing what that does
+
+```{r}
+merged_ref1 <- merge(ref, Labels, by = "Model_Code")
+
+colnames(sclsAttr)[colnames(sclsAttr) == "VALUE"] <- "Var2"
+
+merged_raw <- merge(raw_filtered, sclsAttr, by = "Var2")
+
+merged_raw1 <- merged_raw[, !(names(merged_raw) %in% c("...1.x", "...1.y", "Freq.y", "R", "G", "REL_PERCENT", "ACRES", "B", "RED","BLUE","GREEN"))]
+```
+
+This worked far better than the convoluted nonsense above
+
+Now am I going to filter this dataset to narrow down what I am not looking at.
+```{r}
+merge_ref1_filtered <- filter(merged_ref1, Model_Code == "13040_32_43_44_49" | Model_Code == "15070_44" | Model_Code == "13670_32_44")
+
+#Repeating this for the data relvent to getting the present percentages althought I have no idea what to mutate what with, since I can't parse out an equation to get the percentages we need.
+bpsAttr_filtered <- filter(bpsAttr, BPS_MODEL == "13040_32_43_44_49" | BPS_MODEL == "15070_44" | BPS_MODEL == "13670_32_44")
+
+#Filtering the raw data to atttempt to get some values
+raw_filtered <- filter(Raw, Var1 == "2160" | Var1 == "2132" | Var1 == "2141")
+
+```
+
+
+Now I need add a variable deonitng whether this is pre colonization or present time
+
+```{r}
+
+merge_ref1_filtered$TimeDesignation <- c("Past", "Past", "Past")
+
+bpsAttr_filtered$TimeDesignation <- c("Present", "Present", "Present")
+
+```
+
+
+All now I have a fitlered raw dataset, a filtered dataset with all of the past frequencies, and a filtered bpsAttributes. I have no idea how to get the percent vlaues displayed on the graph for the present day metric and don't see how the raw data set is associated with the BpS dataset other than number which seems to identify which BpS adn which succession stage that raw data is associated with (Which doesn't make anything clearer because it is still unclear what the frequency variable is showing)
